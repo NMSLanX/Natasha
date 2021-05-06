@@ -184,8 +184,11 @@ namespace NatashaUT.Model
     {
 
     }
+#if !(NET461 || NET462 || NET472)
     public class NotNull<T> where T: notnull,new()
     { }
+
+#endif
 
 
     public class ClassNewClassInterfaceT<T> where T : G2, G3, G4, new()
@@ -202,10 +205,11 @@ namespace NatashaUT.Model
     {
 
     }
-
+#if !(NET461 || NET462 || NET472)
     public interface InOutInterfaceT<in T, out S> where T : notnull, G2, G3, G4, new() where S : G2, G3, G4, new()
     {
 
     }
+#endif
 
 }

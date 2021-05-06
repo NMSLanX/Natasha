@@ -26,7 +26,7 @@ namespace Core20
 }";
             //根据脚本创建动态类
             AssemblyCSharpBuilder oop = new AssemblyCSharpBuilder("test");
-            oop.Domain = DomainManagement.Random;
+            oop.Domain = DomainComponent.Random;
             oop.Domain.AddReferencesFromDllFile(typeof(object).Assembly.Location);
             oop.Add(text);
             Type type = oop.GetTypeFromShortName("Test");
@@ -36,7 +36,7 @@ namespace Core20
             var action = NDelegate.UseDomain(oop.Domain).Action("");
             var a = action.Method;
             Console.WriteLine(action.Method.Module.Assembly);
-            Console.WriteLine(DomainManagement.IsDeleted(action.GetDomain().Name));
+            Console.WriteLine(DomainComponent.IsDeleted(action.GetDomain().Name));
 
             //var nClass = NClass
             //    .RandomDomain();

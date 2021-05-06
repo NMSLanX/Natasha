@@ -70,7 +70,9 @@ namespace NatashaUT
 
 
             Assert.NotEqual(action3.GetHashCode(), action2.GetHashCode());
+#if NET472 || NET461 || NET462
             Assert.NotEqual(action.Method.GetHashCode(), action2.Method.GetHashCode());
+#endif
             Assert.Equal(action.GetHashCode(), action2.GetHashCode());
 
         }

@@ -54,6 +54,9 @@ namespace NatashaUT
         [Fact(DisplayName = "CS0433 List")]
         public void Test3()
         {
+#if (NET472 || NET461 || NET462)
+    DomainComponent.Default.AddReferencesFromDllFile(typeof(List<>).Assembly.Location);
+#endif
             var func = NDelegate
                 .RandomDomain(item => item.UseShareLibraries = true)
                 .Func<int>("return (new List<string>()).Count;");

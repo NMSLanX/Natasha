@@ -55,7 +55,7 @@ namespace NatashaUT
             Assert.Equal($@"using NatashaUT;{Environment.NewLine}using System;{Environment.NewLine}namespace TestNamespace{{public static class TestUt1<T> : System.Int32 where T : notnull {{{Environment.NewLine}public static void Test(){{}}}}}}", script);
 
         }
-
+#if !(NET461 || NET462 || NET472)
         [Fact(DisplayName = "构建类3")]
         public void TestBuilder3()
         {
@@ -77,7 +77,7 @@ namespace NatashaUT
             Assert.Equal($@"using NatashaUT;{Environment.NewLine}using System;{Environment.NewLine}namespace TestNamespace{{public static class TestUt1<T> : System.Int32 where T : notnull, NatashaUT.Model.G2, NatashaUT.Model.G3, NatashaUT.Model.G4, new() where S : NatashaUT.Model.G2, NatashaUT.Model.G3, NatashaUT.Model.G4, new() {{{Environment.NewLine}public static void Test(){{}}}}}}", script);
 
         }
-
+#endif
         [Fact(DisplayName = "构建类4")]
         public void TestBuilder4()
         {

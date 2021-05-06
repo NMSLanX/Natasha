@@ -64,7 +64,10 @@ namespace NatashaUT.OperatorUT
         [Fact(DisplayName = "异步委托1")]
         public async void RunAsyncDelegate1()
         {
-            var delegateAction = FastMethodOperator.DefaultDomain()
+            var delegateAction = FastMethodOperator.DefaultDomain(item=>item
+            .LogCompilerError()
+            .ThrowSyntaxError()
+            )
 
                 .Async()
                 .Body(@"

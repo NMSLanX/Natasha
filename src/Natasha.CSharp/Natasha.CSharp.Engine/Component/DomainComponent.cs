@@ -5,56 +5,36 @@ using System.Collections.Concurrent;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+#if !(NET472 || NET461 || NET462)
 using static System.Runtime.Loader.AssemblyLoadContext;
+#endif
 
-
-public class DomainManagement
+public class DomainComponent
 {
-
     public static DomainBase Default;
     public static readonly ConcurrentDictionary<string, WeakReference> Cache;
     public static Func<string, DomainBase> CreateDomain;
 
-    static DomainManagement()
+    static DomainComponent()
     {
         Cache = new ConcurrentDictionary<string, WeakReference>();
     }
 
 
-    public static TDomain RegisterDefault<TDomain>(bool initializeReference= true) where TDomain : DomainBase
-    {
-
-        DynamicMethod method = new DynamicMethod("Domain" + Guid.NewGuid().ToString(), typeof(DomainBase), new Type[] { typeof(string) });
-        ILGenerator il = method.GetILGenerator();
-        ConstructorInfo ctor = typeof(TDomain).GetConstructor(BindingFlags.Instance | BindingFlags.Public, null, new Type[] { typeof(string) }, null);
-        il.Emit(OpCodes.Ldarg_0);
-        il.Emit(OpCodes.Newobj, ctor);
-        il.Emit(OpCodes.Ret);
-        CreateDomain = (Func<string, DomainBase>)(method.CreateDelegate(typeof(Func<string, DomainBase>)));
-
-        Default = Create("Default");
-        if (initializeReference)
-        {
-            foreach (var asm in DependencyContext
-            .Default
-            .CompileLibraries
-            .SelectMany(cl => cl.ResolveReferencePaths()))
-                {
-                    Default.AddReferencesFromDllFile(asm);
-                }
-        }
-        
-
-
-        return (TDomain)Default;
-
-    }
-
-
-
     public static DomainBase Random
     {
-        get { return Create("N" + Guid.NewGuid().ToString("N")); }
+        get
+        {
+
+#if (NET472 || NET461 || NET462)
+            
+            return Default;
+#else
+
+            return Create("N" + Guid.NewGuid().ToString("N"));
+#endif
+
+        }
     }
 
 
@@ -86,8 +66,9 @@ public class DomainManagement
     }
 
 
-#if !NETSTANDARD2_0
-        public static ContextualReflectionScope Lock(string key)
+#if !(NET461 || NET462 || NET472 || NETSTANDARD2_0)
+
+    public static ContextualReflectionScope Lock(string key)
         {
             if (Cache.ContainsKey(key))
             {
@@ -146,7 +127,7 @@ public class DomainManagement
         throw new System.Exception($"Can't find key : {key}!");
     }
 
-
+    //#if !(NET472 || NET461 || NET462)
     public static bool IsDeleted(string key)
     {
         if (Cache.ContainsKey(key))
@@ -171,4 +152,22 @@ public class DomainManagement
     {
         return ((DomainBase)(Cache[key].Target)).Count;
     }
+    //#endif
+    public static Func<string, DomainBase> RegisterDefault<TDomain>(bool initializeReference= true) where TDomain : DomainBase
+    {
+
+        DynamicMethod method = new DynamicMethod("Domain" + Guid.NewGuid().ToString(), typeof(DomainBase), new Type[] { typeof(string) });
+        ILGenerator il = method.GetILGenerator();
+        ConstructorInfo ctor = typeof(TDomain).GetConstructor(BindingFlags.Instance | BindingFlags.Public, null, new Type[] { typeof(string) }, null);
+        il.Emit(OpCodes.Ldarg_0);
+        il.Emit(OpCodes.Newobj, ctor);
+        il.Emit(OpCodes.Ret);
+        return (Func<string, DomainBase>)(method.CreateDelegate(typeof(Func<string, DomainBase>)));
+
+    }
+
 }
+
+
+
+

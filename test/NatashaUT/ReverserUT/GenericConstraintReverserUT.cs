@@ -28,12 +28,15 @@ namespace NatashaUT.ReverserUT
             var result = GenericConstraintReverser.GetTypeConstraints(typeof(NewT<>));
             Assert.Equal("where T : new() ", result);
         }
+#if !(NET461 || NET462 || NET472)
         [Fact(DisplayName = "非空约束反解")]
         public void Test9()
         {
             var result = GenericConstraintReverser.GetTypeConstraints(typeof(NotNull<>));
             Assert.Equal("where T : notnull, new() ", result);
         }
+#endif
+
 
         [Fact(DisplayName = "非托管约束反解")]
         public void Test5()
@@ -60,6 +63,7 @@ namespace NatashaUT.ReverserUT
             var result = GenericConstraintReverser.GetVariant(typeof(OutInterfaceT<>).GetGenericArguments()[0]);
             Assert.Equal("out T", result);
         }
+#if !(NET461 || NET462 || NET472)
         [Fact(DisplayName = "复杂约束反解")]
         public void Test8()
         {
@@ -70,7 +74,7 @@ namespace NatashaUT.ReverserUT
             Assert.Equal("where T : notnull, NatashaUT.Model.G2, NatashaUT.Model.G3, NatashaUT.Model.G4, new() where S : NatashaUT.Model.G2, NatashaUT.Model.G3, NatashaUT.Model.G4, new() ", result1);
         }
 
-
+#endif
 
     }
 }

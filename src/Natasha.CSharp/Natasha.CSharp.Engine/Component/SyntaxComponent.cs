@@ -6,9 +6,8 @@ using System.Reflection.Emit;
 namespace Natasha.CSharpEngine
 {
 
-    public static class SyntaxManagement
+    public static class SyntaxComponent
     {
-
         public static Func<SyntaxBase> GetSyntax;
         public static void RegisterDefault<T>() where T : SyntaxBase, new()
         {

@@ -6,19 +6,128 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Runtime.Loader;
+#if !(NET472 || NET461 || NET462)
+    using System.Runtime.Loader;
+#endif
+
 
 
 namespace Natasha.Framework
 {
 
-    //#if NET472 || NET461 || NET462
-    //    public abstract class AssemblyLoadContext : Assembly
-    //    {
-    //        public readonly string Name;
-    //        public AssemblyLoadContext(string name,bool )
-    //    }
-    //#endif
+#if NET472 || NET461 || NET462
+    public class AssemblyLoadContext
+    {
+        internal readonly AppDomain _domain;
+        private readonly AppDomainSetup _setup;
+        internal static ConcurrentDictionary<Assembly, AssemblyLoadContext> AssemblyDomainMapper;
+        static AssemblyLoadContext()
+        {
+            Default = new AssemblyLoadContext("Default");
+            AssemblyDomainMapper = new ConcurrentDictionary<Assembly, AssemblyLoadContext>();
+        }
+
+        public static AssemblyLoadContext Default { get; private set; }
+        public AssemblyLoadContext(string name, bool isCollectible = false)
+        {
+
+            if (name == "Default")
+            {
+                _domain = AppDomain.CurrentDomain;
+                
+            }
+            else
+            {
+
+                _domain = AppDomain.CreateDomain(name);
+                _setup = new AppDomainSetup();
+                _setup.PrivateBinPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "private");
+                _setup.ApplicationName = name;
+                _setup.ApplicationBase = AppDomain.CurrentDomain.BaseDirectory;
+                _setup.ShadowCopyFiles = "true";
+                _setup.ShadowCopyDirectories = _setup.ApplicationBase;
+
+            }
+           
+            
+        }
+
+         public static AssemblyLoadContext GetLoadContext(Assembly assembly)
+         {
+
+            if (AssemblyDomainMapper.TryGetValue(assembly, out var context))
+            {
+                return context;
+            }
+            return Default;
+
+         }
+
+        public event Func<Assembly, string, IntPtr> ResolvingUnmanagedDll;
+        //
+        // 摘要:
+        //     Occurs when the System.Runtime.Loader.AssemblyLoadContext is unloaded.
+        public event Action<AssemblyLoadContext> Unloading;
+        //
+        // 摘要:
+        //     Occurs when the resolution of an assembly fails when attempting to load into
+        //     this assembly load context.
+        public event Func<AssemblyLoadContext, AssemblyName, Assembly> Resolving;
+        protected virtual Assembly Load(AssemblyName assemblyName)
+        {
+            return _domain.Load(assemblyName);
+        }
+        //
+        // 摘要:
+        //     Allows derived class to load an unmanaged library by name.
+        //
+        // 参数:
+        //   unmanagedDllName:
+        //     Name of the unmanaged library. Typically this is the filename without its path
+        //     or extensions.
+        //
+        // 返回结果:
+        //     A handle to the loaded library, or System.IntPtr.Zero.
+        protected virtual IntPtr LoadUnmanagedDll(string unmanagedDllName)
+        {
+            return default;
+        }
+
+        protected IntPtr LoadUnmanagedDllFromPath(string unmanagedDllPath)
+        {
+            return default;
+        }
+
+        public Assembly LoadFromAssemblyName(AssemblyName assemblyName)
+        {
+            return _domain.Load(assemblyName);
+        }
+
+        public Assembly LoadFromAssemblyPath(string assemblyPath)
+        {
+            using (FileStream stream = new FileStream(assemblyPath, FileMode.Open, FileAccess.Read))
+            {
+                var assembly = LoadFromStream(stream);
+                return assembly;
+            }
+        }
+
+        public Assembly LoadFromNativeImagePath(string nativeImagePath, string assemblyPath)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Assembly LoadFromStream(Stream assembly)
+        {
+
+            var buffer = new byte[assembly.Length];
+            assembly.Read(buffer, 0, buffer.Length);
+            return Assembly.Load(buffer);
+
+        }
+
+    }
+#endif
 
     /// <summary>
     /// 程序域的基础类，需要继承实现
@@ -54,14 +163,14 @@ namespace Natasha.Framework
         /// 存放文件过来的程序集与引用
         /// </summary>
         public readonly ConcurrentDictionary<string, PortableExecutableReference> ReferencesFromFile;
-#if NETSTANDARD2_0
+#if NET472 || NET461 || NET462 || NETSTANDARD2_0
         public string Name;
 #else
         public readonly static Func<AssemblyDependencyResolver, Dictionary<string, string>> GetDictionary;
 #endif
         static DomainBase()
         {
-#if !NETSTANDARD2_0
+#if !(NET472 || NET461 || NET462 || NETSTANDARD2_0)
             //从依赖中拿到所有的路径，该属性未开放
             var methodInfo = typeof(AssemblyDependencyResolver).GetField("_assemblyPaths", BindingFlags.NonPublic | BindingFlags.Instance);
             GetDictionary = item => (Dictionary<string, string>)methodInfo.GetValue(item);
@@ -90,12 +199,12 @@ namespace Natasha.Framework
         /// <param name="key"></param>
         public DomainBase(string key)
 
-#if  !NETSTANDARD2_0
+#if !NETSTANDARD2_0
             : base(isCollectible: true, name: key)
 #endif
 
         {
-#if NETSTANDARD2_0
+#if NET472 || NET461 || NET462 || NETSTANDARD2_0
             Name = key;
 #endif
             DllAssemblies = new ConcurrentDictionary<string, Assembly>();
@@ -105,7 +214,7 @@ namespace Natasha.Framework
             {
                 DefaultDomain = this;
                 Default.Resolving += Default_Resolving;
-#if !NETSTANDARD2_0
+#if !(NET461 || NETSTANDARD2_0)
                 Default.ResolvingUnmanagedDll += Default_ResolvingUnmanagedDll;
 #endif
             }
@@ -208,9 +317,8 @@ namespace Natasha.Framework
                 {
 
                     var shortName = Path.GetFileNameWithoutExtension(path);
-                    while (!ReferencesFromFile.TryRemove(shortName, out _)) { }
-                    Assembly assembly;
-                    while (!DllAssemblies.TryRemove(path, out assembly)) { }
+                    ReferencesFromFile.Remove(shortName);
+                    Assembly assembly = DllAssemblies.Remove(path);
                     RemoveAssemblyEvent?.Invoke(assembly);
                 }
             }
@@ -225,15 +333,19 @@ namespace Natasha.Framework
         {
             if (assembly != null)
             {
+               
                 if (ReferencesFromStream.ContainsKey(assembly))
                 {
-                    while (!ReferencesFromStream.TryRemove(assembly, out _)) { }
+                    ReferencesFromStream.Remove(assembly);
                     RemoveAssemblyEvent?.Invoke(assembly);
                 }
                 else if (assembly.Location != "" && assembly.Location != default)
                 {
                     Remove(assembly.Location);
                 }
+#if  NET472 || NET461 || NET462
+                AssemblyDomainMapper.Remove(assembly);
+#endif
             }
         }
 
@@ -252,14 +364,49 @@ namespace Natasha.Framework
         /// </summary>
         public virtual void Dispose()
         {
-#if !NETSTANDARD2_0
+
+#if !(NET472 || NET461 || NET462 || NETSTANDARD2_0)
             DependencyResolver = null;
 #endif
             DllAssemblies.Clear();
             ReferencesFromStream.Clear();
             ReferencesFromFile.Clear();
+
+#if NET472 || NET461 || NET462
+            AppDomain.Unload(_domain);
+#endif
         }
 
+
+        /// <summary>
+        /// 添加该类型所在程序集的引用
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        public void AddReferencesFromType<T>()
+        {
+            AddReferencesFromType(typeof(T));
+        }
+
+        /// <summary>
+        /// 添加该类型所在程序集的引用
+        /// </summary>
+        /// <param name="type"></param>
+        public void AddReferencesFromType(Type type)
+        {
+            AddReferencesFromAssembly(type.Assembly);
+        }
+
+        /// <summary>
+        /// 添加该程序集的引用
+        /// </summary>
+        /// <param name="assembly"></param>
+        public void AddReferencesFromAssembly(Assembly assembly)
+        {
+            if (!assembly.IsDynamic && !string.IsNullOrEmpty(assembly.Location))
+            {
+                AddReferencesFromDllFile(assembly.Location);
+            }
+        }
 
         /// <summary>
         /// 根据DLL路径添加单个的引用，以文件方式加载
@@ -392,7 +539,7 @@ namespace Natasha.Framework
 
 
 
-#if !NETSTANDARD2_0
+#if !(NET472 || NET461 || NET462 || NETSTANDARD2_0)
         public AssemblyDependencyResolver DependencyResolver;
 #endif
         /// <summary>
@@ -406,7 +553,7 @@ namespace Natasha.Framework
             if (excludePaths.Length == 0)
             {
 
-#if !NETSTANDARD2_0
+#if !(NET472 || NET461 || NET462 || NETSTANDARD2_0)
 
                 DependencyResolver = new AssemblyDependencyResolver(path);
                 var newMapping = GetDictionary(DependencyResolver);
@@ -432,7 +579,7 @@ namespace Natasha.Framework
                     exclude = new HashSet<string>(excludePaths);
                 }
 
-#if !NETSTANDARD2_0
+#if !(NET472 || NET461 || NET462 || NETSTANDARD2_0)
 
                 DependencyResolver = new AssemblyDependencyResolver(path);
                 var newMapping = GetDictionary(DependencyResolver);

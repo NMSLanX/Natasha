@@ -1,4 +1,5 @@
-﻿using Natasha.CSharp;
+﻿using Microsoft.Extensions.DependencyModel;
+using Natasha.CSharp;
 using System;
 using System.Threading.Tasks;
 
@@ -43,7 +44,7 @@ public static class NatashaInitializer
     {
 
         Initialize(initializeReference);
-        var domain = DomainManagement.Random;
+        var domain = DomainComponent.Random;
         if (initializeReference)
         {
             domain.AddReferencesFromDllFile(typeof(object).Assembly.Location);

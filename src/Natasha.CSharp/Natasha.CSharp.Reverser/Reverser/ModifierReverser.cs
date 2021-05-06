@@ -211,7 +211,7 @@ namespace Natasha.CSharp.Reverser
 
             }
 
-#if !NETSTANDARD2_0
+#if !(NET472 || NET461 || NET462 || NETSTANDARD2_0)
             else if (info.IsValueType)
             {
 

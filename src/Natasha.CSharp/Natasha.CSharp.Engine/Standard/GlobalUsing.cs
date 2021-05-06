@@ -18,6 +18,7 @@ namespace Natasha
 
             DefaultScript = new StringBuilder();
             DefaultNamesapce = new HashSet<string>();
+#if !(NET472 || NET461 || NET462)
             var assemblyNames = DependencyContext.Default.GetDefaultAssemblyNames();
             foreach (var name in assemblyNames)
             {
@@ -44,10 +45,10 @@ namespace Natasha
                     catch (Exception)
                     {
 
-                        
+
 
                     }
-                    
+
 
                 }
 
@@ -68,6 +69,33 @@ namespace Natasha
             {
                 DefaultScript.AppendLine($"using {@using};");
             }
+#else
+            var assembies = AppDomain.CurrentDomain.GetAssemblies();
+            foreach (var item in assembies)
+            {
+                try
+                {
+                    var entryTypes = item.GetTypes();
+                    foreach (var type in entryTypes)
+                    {
+                        if (!DefaultNamesapce.Contains(type.Namespace) && type.Namespace != default)
+                        {
+                            DefaultNamesapce.Add(type.Namespace);
+                            DefaultScript.AppendLine($"using {type.Namespace};");
+                        }
+
+                    }
+                }
+                catch
+                {
+
+ 
+                }
+                
+
+            }
+#endif
+
 
 
         }

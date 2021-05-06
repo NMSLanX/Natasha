@@ -20,7 +20,7 @@ namespace NatashaUT
     public string LastName { get; init; }
 }";
             AssemblyCSharpBuilder builder = new AssemblyCSharpBuilder();
-            builder.Domain = DomainManagement.Random;
+            builder.Domain = DomainComponent.Random;
             builder.Add(script);
             var type = builder.GetType();
             Assert.NotNull(type);
@@ -32,14 +32,19 @@ namespace NatashaUT
         {
 
             var script = NRecord
-                .RandomDomain()
+#if !(NET472 || NET461 || NET462)
+.RandomDomain()
+#else
+.DefaultDomain()
+#endif
+
                 .Name("TRecord")
                 .HiddenNamespace()
                 .Public()
                 .RecordProperty<string>("P1")
                 .RecordProperty<int>("P2")
                 .Script;
-            Assert.Contains(@$"public record TRecord{{{Environment.NewLine}public System.String P1{{{Environment.NewLine}get;{Environment.NewLine}init;{Environment.NewLine}}}{Environment.NewLine}public System.Int32 P2{{{Environment.NewLine}get;{Environment.NewLine}init;{Environment.NewLine}}}{Environment.NewLine}}}", script);
+            Assert.Contains($@"public record TRecord{{{Environment.NewLine}public System.String P1{{{Environment.NewLine}get;{Environment.NewLine}init;{Environment.NewLine}}}{Environment.NewLine}public System.Int32 P2{{{Environment.NewLine}get;{Environment.NewLine}init;{Environment.NewLine}}}{Environment.NewLine}}}", script);
 
         }
 
@@ -90,7 +95,7 @@ namespace NatashaUT
 #endif
 
     }
-
+#if NET5_0
     public interface a { }
 
     
@@ -112,5 +117,5 @@ namespace NatashaUT
         public string FirstName { get { return _name; } init { _name = value; } }
         
     }
-
+#endif
 }

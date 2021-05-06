@@ -7,6 +7,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Runtime.Loader;
+#if !(NET472 || NET461 || NET462)
+using System.Runtime.Loader;
+#endif
 
 /// <summary>
 /// Natasha域实现
@@ -230,12 +233,12 @@ public class NatashaAssemblyDomain : DomainBase
     public NatashaAssemblyDomain(string key) : base(key)
     {
         UseNewVersionAssmebly = true;
-#if !NETSTANDARD2_0
+#if !(NET472 || NET461 || NET462 || NETSTANDARD2_0)
         DependencyResolver = new AssemblyDependencyResolver(AppDomain.CurrentDomain.BaseDirectory);
 #endif
         _usingsTemplate = new UsingTemplate();
-        AddAssemblyEvent += NatashaAssemblyDomain_AddAssemblyEvent; ;
-        RemoveAssemblyEvent += NatashaAssemblyDomain_RemoveAssemblyEvent; ;
+        AddAssemblyEvent += NatashaAssemblyDomain_AddAssemblyEvent;
+        RemoveAssemblyEvent += NatashaAssemblyDomain_RemoveAssemblyEvent;
     }
 
     private void NatashaAssemblyDomain_RemoveAssemblyEvent(Assembly obj)
@@ -273,7 +276,7 @@ public class NatashaAssemblyDomain : DomainBase
     /// <returns></returns>
     protected override Assembly Load(AssemblyName assemblyName)
     {
-#if !NETSTANDARD2_0
+#if !(NET472 || NET461 || NET462 || NETSTANDARD2_0)
         string assemblyPath = DependencyResolver.ResolveAssemblyToPath(assemblyName);
         if (assemblyPath != null)
         {
@@ -295,7 +298,7 @@ public class NatashaAssemblyDomain : DomainBase
     /// <returns></returns>
     protected override IntPtr LoadUnmanagedDll(string unmanagedDllName)
     {
-#if !NETSTANDARD2_0
+#if !(NET472 || NET461 || NET462 || NETSTANDARD2_0)
         string libraryPath = DependencyResolver.ResolveUnmanagedDllToPath(unmanagedDllName);
         if (libraryPath != null)
         {

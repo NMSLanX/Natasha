@@ -23,7 +23,7 @@ namespace NatashaUT
                 GC.Collect();
                 GC.WaitForPendingFinalizers();
             }
-            Assert.True(DomainManagement.IsDeleted("SingleDomainAsmTest1"));
+            Assert.True(DomainComponent.IsDeleted("SingleDomainAsmTest1"));
 #endif
 
         }
@@ -33,7 +33,7 @@ namespace NatashaUT
         internal string ForTest1()
         {
 
-            var domain = DomainManagement.Create("SingleDomainAsmTest1");
+            var domain = DomainComponent.Create("SingleDomainAsmTest1");
             var assembly = domain.CreateAssembly("AsmTest1");
 
             var @interface = assembly
@@ -66,25 +66,46 @@ namespace NatashaUT
             var result = assembly.GetAssembly();
             var type = assembly.GetTypeFromFullName(@class.NamespaceScript+"."+"ClassAsm");
 
-            var builder = FastMethodOperator.DefaultDomain();
-            builder.AssemblyBuilder.Compiler.Domain = domain;
+            var builder = FastMethodOperator.UseDomain(domain);
             var @delegate = builder.Body(@"
             ClassAsm obj = new ClassAsm();
             return obj.ShowMethod(""Hello"");
             ").Compile<Func<string, string>>();
-            DomainManagement.Get("SingleDomainAsmTest1").Dispose();
+            DomainComponent.Get("SingleDomainAsmTest1").Dispose();
             return @delegate("hello");
 
 
         }
 
+#if !(NET472 || NET461 || NET462)
+        [Fact(DisplayName = "同程序集覆盖")]
+        public void Test6()
+        {
+
+            string assemblyName = "tsda";
+            AssemblyCSharpBuilder builder = new AssemblyCSharpBuilder(assemblyName);
+            builder.Compiler.Domain = DomainComponent.Create("a");
+            builder.Add("public class TSDA{}");
+            var assembly = builder.GetAssembly();
+            assembly.RemoveReferences();
+            Assert.NotNull(assembly);
+            builder = new AssemblyCSharpBuilder();
+            builder.Compiler.Domain = DomainComponent.Create("a");
+            builder.Add("public class TSDA{}");
+            var assembly1 = builder.GetAssembly();
+            Assert.NotEqual(assembly, assembly1);
+            var func = NDelegate.CreateDomain("a").Func<string>("return typeof(TSDA).Assembly.FullName;");
+            Assert.Equal(assembly1.FullName, func());
+
+        }
+#endif
 
 
-
+#if !(NET472 || NET461 || NET462)
         [Fact(DisplayName = "多程序集覆盖")]
         public void Test2()
         {
-            var domain = DomainManagement.Create("SingleDomainAsmTest2");
+            var domain = DomainComponent.Create("SingleDomainAsmTest2");
             var assembly = domain.CreateAssembly("AsmTest1");
 
             var @interface = assembly
@@ -171,16 +192,16 @@ return obj.ShowMethod(""Hello"");
                 GC.WaitForPendingFinalizers();
             }
 
-            Assert.True(DomainManagement.IsDeleted("SingleDomainAsmTest1"));
+            Assert.True(DomainComponent.IsDeleted("SingleDomainAsmTest1"));
 #endif
 
         }
-
-#if !NETCOREAPP2_2
+#endif
+#if !(NETCOREAPP2_2 || NET472 || NET461 || NET462)
         [Fact(DisplayName = "自定义域解构编译")]
         public void Test4()
         {
-            using (DomainManagement.CreateAndLock("TempDomain15"))
+            using (DomainComponent.CreateAndLock("TempDomain15"))
             {
 
                 var (Assembly, Exception) = @"
@@ -212,38 +233,18 @@ public class Test{}
                 Assert.Equal("Test", Assembly.GetExportedTypes()[0].Name);
         }
 
-        
-        [Fact(DisplayName = "同域同程序集覆盖")]
-        public void Test6()
-        {
-            
-            string assemblyName = "tsda";
-            AssemblyCSharpBuilder builder = new AssemblyCSharpBuilder(assemblyName);
-            builder.Compiler.Domain = DomainManagement.Create("a");
-            builder.Add("public class TSDA{}");
-            var assembly = builder.GetAssembly();
-            assembly.RemoveReferences();
-            Assert.NotNull(assembly);
-            builder = new AssemblyCSharpBuilder();
-            builder.Compiler.Domain = DomainManagement.Create("a");
-            builder.Add("public class TSDA{}");
-            var assembly1 = builder.GetAssembly();
-            Assert.NotEqual(assembly, assembly1);
-            var func = NDelegate.CreateDomain("a").Func<string>("return typeof(TSDA).Assembly.FullName;");
-            Assert.Equal(assembly1.FullName, func());
-
-        }
 
 
 
-#if !NETCOREAPP2_2
+
+#if !(NETCOREAPP2_2 || NET472 || NET461 || NET462)
 
         [Fact(DisplayName = "域锁与管理")]
         public void Test3()
         {
-            using (DomainManagement.CreateAndLock("CDomain1"))
+            using (DomainComponent.CreateAndLock("CDomain1"))
             {
-                var domain = DomainManagement.CurrentDomain;
+                var domain = DomainComponent.CurrentDomain;
                 Assert.Equal("CDomain1", domain.Name);
             }
         }
@@ -252,10 +253,10 @@ public class Test{}
         public void TestHelloWorld()
         {
 
-            using (DomainManagement.CreateAndLock("MyDomain"))
+            using (DomainComponent.CreateAndLock("MyDomain"))
             {
 
-                var domain = DomainManagement.CurrentDomain;
+                var domain = DomainComponent.CurrentDomain;
                 var assembly = domain.CreateAssembly("MyAssembly");
 
 

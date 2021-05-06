@@ -1,14 +1,17 @@
 ﻿using NatashaUT.Model;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Xunit;
-using static NatashaUT.ReverserUT.TypeReverserUT;
+#if !(NET461 || NET462 || NET472)
 
 namespace NatashaUT.ReverserUT
 {
+
+
     [Trait("反解器", "类型元数据")]
     public class TypeReverserUT : PrepareTest
     {
@@ -357,3 +360,4 @@ namespace NatashaUT.ReverserUT
 
 
 }
+#endif

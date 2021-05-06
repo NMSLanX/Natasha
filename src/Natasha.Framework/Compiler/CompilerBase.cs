@@ -5,7 +5,10 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Reflection;
+#if !(NET472 || NET461 || NET462) 
 using System.Runtime.Loader;
+#endif
+
 
 namespace Natasha.Framework
 {
@@ -13,7 +16,7 @@ namespace Natasha.Framework
     {
 
         public string AssemblyName;
-        public Assembly AssemblyResult;
+        //public Assembly AssemblyResult;
         public AssemblyBuildKind AssemblyOutputKind;
         public string DllPath;
         public string PdbPath;
@@ -36,7 +39,7 @@ namespace Natasha.Framework
             {
                 if (_domain == null)
                 {
-#if !NETSTANDARD2_0
+#if !(NET472 || NET461 || NET462 || NETSTANDARD2_0)
                     if (AssemblyLoadContext.CurrentContextualReflectionContext != default)
                     {
                         _domain = (DomainBase)(AssemblyLoadContext.CurrentContextualReflectionContext);
@@ -135,21 +138,21 @@ namespace Natasha.Framework
         /// <summary>
         /// 文件编译失败之后触发的事件
         /// </summary>
-        public event Action<string, string, ImmutableArray<Diagnostic>, TCompilation> FileCompileFailedHandler;
+        public event Func<string, string, ImmutableArray<Diagnostic>, TCompilation, Assembly> FileCompileFailedHandler;
 
         
         /// <summary>
         /// 流编译失败之后触发的事件
         /// </summary>
-        public event Action<Stream, ImmutableArray<Diagnostic>, TCompilation> StreamCompileFailedHandler;
+        public event Func<Stream, ImmutableArray<Diagnostic>, TCompilation, Assembly> StreamCompileFailedHandler;
 
         
         /// <summary>
         /// 文件编译流程
         /// </summary>
-        public virtual void CompileToFile()
+        public virtual Assembly CompileToFile()
         {
-
+            Assembly assembly = null;
             if (PreCompiler())
             {
 
@@ -160,15 +163,17 @@ namespace Natasha.Framework
 
                 if (CompileResult.Success)
                 {
-                    AssemblyResult = Domain.CompileFileHandler(DllPath, PdbPath, AssemblyName);
+                    assembly = Domain.CompileFileHandler(DllPath, PdbPath, AssemblyName);
                     FileCompileSucceedHandler?.Invoke(DllPath, PdbPath, compilation);
+
                 }
                 else
                 {
-                    FileCompileFailedHandler?.Invoke(DllPath, PdbPath, CompileResult.Diagnostics, compilation);
+                    assembly = FileCompileFailedHandler?.Invoke(DllPath, PdbPath, CompileResult.Diagnostics, compilation);
                 }
 
             }
+            return assembly;
 
         }
 
@@ -176,9 +181,9 @@ namespace Natasha.Framework
         /// <summary>
         /// 流编译流程
         /// </summary>
-        public virtual void CompileToStream()
+        public virtual Assembly CompileToStream()
         {
-
+            Assembly assembly = null;
             if (PreCompiler())
             {
 
@@ -195,37 +200,36 @@ namespace Natasha.Framework
                     MemoryStream copyStream = new MemoryStream();
                     stream.CopyTo(copyStream);
                     stream.Seek(0, SeekOrigin.Begin);
-                    AssemblyResult = Domain.CompileStreamHandler(stream, AssemblyName);
+                    assembly = Domain.CompileStreamHandler(stream, AssemblyName);
                     StreamCompileSucceedHandler?.Invoke(copyStream, compilation);
                     copyStream.Dispose();
                 }
                 else
                 {
                     stream.Seek(0, SeekOrigin.Begin);
-                    StreamCompileFailedHandler?.Invoke(stream, CompileResult.Diagnostics, compilation);
+                    assembly = StreamCompileFailedHandler?.Invoke(stream, CompileResult.Diagnostics, compilation);
                 }
                 stream.Dispose();
 
             }
-
+            return assembly;
         }
 
 
         /// <summary>
         /// 编译入口，对语法树进行编译
         /// </summary>
-        public virtual void Compile()
+        public virtual Assembly Compile()
         {
             switch (AssemblyOutputKind)
             {
                 case AssemblyBuildKind.File:
-                    CompileToFile();
-                    break;
+                    return CompileToFile();
 
                 case AssemblyBuildKind.Stream:
-                    CompileToStream();
-                    break;
+                    return CompileToStream();
             }
+            return null;
         }
     }
 }
